@@ -1,0 +1,81 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Resources:
+  ec2Sg:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId:
+        Ref: VpcId
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: 22
+        ToPort: 22
+        CidrIp: 1.2.3.4/32
+      - IpProtocol: tcp
+        FromPort: 80
+        ToPort: 80
+        CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+      - IpProtocol: tcp
+        FromPort: 80
+        ToPort: 80
+        CidrIp: 0.0.0.0/0
+      GroupName:
+        Fn::Join:
+        - ""
+        - - Ref: AppName
+          - "-web-sg"
+      GroupDescription: "Security group for web instances"
+      Tags:
+        - Key: App
+          Value:
+            Ref: AppName
+  launchConfig:
+    Type: AWS::AutoScaling::LaunchConfiguration
+    Properties:
+      AssociatePublicIpAddress: true
+      InstanceMonitoring: false
+      KeyName:
+        Ref: KeyName
+      ImageId: ami-fc5ae39f
+      SecurityGroups:
+        - Ref: ec2Sg
+      InstanceType: t2.micro
+  # ec2Fleet:
+  #   Type: AWS::AutoScaling::AutoScalingGroup
+  #   LaunchConfigurationName:
+  #     Ref: launchConfig
+  #   MinSize: 0
+  #   MaxSize: 0
+  #   LoadBalancerNames:
+  #     - Ref: ELBName
+  #   HealthCheckType: EC2
+  #   VPCZoneIdentifier:
+  #     - Ref: PublicSubnet1Id
+  #     - Ref: PublicSubnet2Id
+Parameters:
+  VpcId:
+    Type: String
+    Description: "VPC ID"
+    Default: vpc-0ab0ce6e
+  AppName:
+    Type: String
+    Default: myapp
+    Description: "The application name."
+  KeyName:
+    Type: String
+    Default: sergey
+    Description: "The key pair to connect to web instances."
+  ELBName:
+    Type: String
+    Description: "The name of the load balancer."
+  PublicSubnet1Id:
+    Type: String
+    Description: "Public Subnet ID in AZ1"
+  PublicSubnet2Id:
+    Type: String
+    Description: "Public Subnet ID in AZ2"
+Outputs:
+  LaunchConfigName:
+    Value:
+      Ref: launchConfig
+    Description: "LaunchConfiguration Name"

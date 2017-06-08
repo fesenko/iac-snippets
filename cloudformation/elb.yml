@@ -1,0 +1,83 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Resources:
+  elbSg:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId:
+        Ref: VpcId
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: 80
+        ToPort: 80
+        CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+      - IpProtocol: tcp
+        FromPort: 80
+        ToPort: 80
+        CidrIp: 0.0.0.0/0
+      GroupName:
+        Fn::Join:
+        - ""
+        - - Ref: AppName
+          - "-elb-sg"
+      GroupDescription: "Security group for ELB"
+      Tags:
+      - Key: App
+        Value:
+          Ref: AppName
+  elb:
+    Type: AWS::ElasticLoadBalancing::LoadBalancer
+    Properties:
+      Subnets:
+      - Ref: PublicSubnet1Id
+      - Ref: PublicSubnet2Id
+      Listeners:
+      - LoadBalancerPort: 80
+        InstancePort: 80
+        Protocol: HTTP
+      SecurityGroups:
+      - Ref: elbSg
+      HealthCheck:
+        Target:
+          Fn::Join:
+          - ""
+          - - "HTTP:"
+            - 80
+            - Ref: HealthCheckUrl
+        HealthyThreshold: 3
+        UnhealthyThreshold: 5
+        Interval: 30
+        Timeout: 5
+      LoadBalancerName:
+        Fn::Join:
+        - ""
+        - - Ref: AppName
+          - "-elb"
+      Scheme: internet-facing
+      Tags:
+      - Key: App
+        Value:
+          Ref: AppName
+Parameters:
+  AppName:
+    Type: String
+    Default: myapp
+    Description: "The application name."
+  HealthCheckUrl:
+    Type: String
+    Default: /
+    Description: "The application health check"
+  VpcId:
+    Type: String
+    Description: "VPC ID"
+  PublicSubnet1Id:
+    Type: String
+    Description: "Public Subnet ID in AZ1"
+  PublicSubnet2Id:
+    Type: String
+    Description: "Public Subnet ID in AZ2"
+Outputs:
+  ELBName:
+    Value:
+      Ref: elb
+    Description: "ELB Name"

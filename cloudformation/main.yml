@@ -1,0 +1,110 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: This template deploys a Node.js application.
+Metadata:
+  "AWS::CloudFormation::Interface":
+    ParameterGroups:
+    - 
+      Label:
+        default: Network Configuration
+      Parameters:
+        - VpcCidrBlock
+        - PublicSubnet1CidrBlock
+        - PublicSubnet2CidrBlock
+    -
+      Label:
+        default: Application Details
+      Parameters:
+        - AppName
+        - HealthCheckUrl
+    -
+      Label:
+        default: EC2 Details
+      Parameters:
+        - KeyName
+Parameters:
+  VpcCidrBlock:
+    Type: String
+    Default: 10.0.0.0/16
+    Description: "The CIDR block you want the VPC to cover."
+  PublicSubnet1CidrBlock:
+    Type: String
+    Default: 10.0.128.0/20
+    Description: "The CIDR block you want the subnet A to cover."
+  PublicSubnet2CidrBlock:
+    Type: String
+    Default: 10.0.16.0/20
+    Description: "The CIDR block you want the subnet B to cover."
+  AppName:
+    Type: String
+    Default: myapp
+    Description: "The application name."
+  HealthCheckUrl:
+    Type: String
+    Default: /
+    Description: "The application health check."
+  KeyName:
+    Type: String
+    Default: sergey
+    Description: "The key pair to connect to EC2 instances."
+Resources:
+  NetworkStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: file://vpc.yml
+      Parameters:
+        VpcCidrBlock:
+          Ref: VpcCidrBlock
+        PublicSubnet1CidrBlock:
+          Ref: PublicSubnet1CidrBlock
+        PublicSubnet2CidrBlock:
+          Ref: PublicSubnet2CidrBlock
+        AppName:
+          Ref: AppName
+  ELBStack:
+    DependsOn: NetworkStack
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: file://elb.yml
+      Parameters:
+        HealthCheckUrl:
+          Ref: HealthCheckUrl
+        AppName:
+          Ref: AppName
+        VpcId:
+          Fn::GetAtt:
+          - NetworkStack
+          - Outputs.VpcId
+        PublicSubnet1Id:
+          Fn::GetAtt:
+          - NetworkStack
+          - Outputs.PublicSubnet1Id
+        PublicSubnet2Id:
+          Fn::GetAtt:
+          - NetworkStack
+          - Outputs.PublicSubnet2Id
+  ASGStack:
+    DependsOn: ELBStack
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: file://asg.yml
+      Parameters:
+        KeyName:
+          Ref: KeyName
+        AppName:
+          Ref: AppName
+        VpcId:
+          Fn::GetAtt:
+          - NetworkStack
+          - Outputs.VpcId
+        ELBName:
+          Fn::GetAtt:
+          - ELBStack
+          - Outputs.ELBName
+        PublicSubnet1Id:
+          Fn::GetAtt:
+          - NetworkStack
+          - Outputs.PublicSubnet1Id
+        PublicSubnet2Id:
+          Fn::GetAtt:
+          - NetworkStack
+          - Outputs.PublicSubnet2Id
